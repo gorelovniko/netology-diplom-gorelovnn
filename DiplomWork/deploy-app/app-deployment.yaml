@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gnn-diploma-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gnn-diploma-app
+  template:
+    metadata:
+      labels:
+        app: gnn-diploma-app
+    spec:
+      containers:
+      - name: app
+        image: nikogorelov/gnn-diploma-netology:0.0.2  # или конкретный тег, например v1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gnn-diploma-service
+spec:
+  selector:
+    app: gnn-diploma-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP  # Сделаем LoadBalancer далее
