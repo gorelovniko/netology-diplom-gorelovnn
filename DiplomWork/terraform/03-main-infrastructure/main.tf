@@ -4,7 +4,7 @@ data "yandex_compute_image" "ubuntu_2204" {
 
 # Создаём ВМ напрямую
 resource "yandex_compute_instance" "vm" {
-  for_each = toset(["cp1", "node1", "node2"])
+  for_each = toset(["cp1", "node1", "node2","gitlab-cicd"])
 
   name        = each.key
   platform_id = "standard-v3"
