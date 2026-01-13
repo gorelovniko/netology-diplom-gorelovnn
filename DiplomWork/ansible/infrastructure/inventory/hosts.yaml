@@ -7,6 +7,8 @@ all:
       ansible_host: "{{ public_ip['node1'] }}"
     node2:
       ansible_host: "{{ public_ip['node2'] }}"
+    gitlab-cicd:
+      ansible_host: "{{ public_ip['gitlab-cicd'] }}"  
   children:
     k8n_cluster:
       hosts:

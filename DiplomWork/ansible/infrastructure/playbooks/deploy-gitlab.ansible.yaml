@@ -1,26 +1,71 @@
 ---
-- name: Setup Gitlab infrastructure
-  hosts: k8n_control_plane
+- name: Deploy GitLab CE on Ubuntu 22.04
+  hosts: gitlab-cicd
+  tags: config-gitlab
+  become: true
+  vars:
+    gitlab_config_path: "/etc/gitlab/gitlab.rb"
+
   tasks:
-    - name: Install Gitlab
-      block:
-        - name: Add stable 'Helm' chart repo
-          kubernetes.core.helm_repository:
-            name: gitlab
-            repo_url: https://charts.gitlab.io/
-        - name: Deploy the latest version of Gitlab
-          kubernetes.core.helm:
-            name: gitlab
-            chart_ref: gitlab/gitlab
-            release_namespace: cicd
-            create_namespace: true
-            values:
-              global:
-                hosts:
-                  # domain: example.com
-                  externalIP: 158.160.55.84
-              certmanager-issuer:
-                email: 
-              postgresql:
-                image:
-                  tag: 13.6.0
+    - name: Wait for SSH to be available
+      wait_for_connection:
+        timeout: 300
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - openssh-server
+          - tzdata
+          - perl
+        state: present
+
+    - name: Add GitLab package repository
+      shell: |
+        curl -fsSL https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
+      args:
+        creates: /etc/apt/sources.list.d/gitlab_gitlab-ce.list
+
+    - name: Install GitLab CE
+      apt:
+        name: gitlab-ce
+        state: present
+        update_cache: yes
+
+    - name: Configure external URL in gitlab.rb
+      lineinfile:
+        path: "{{ gitlab_config_path }}"
+        regexp: '^external_url '
+        line: 'external_url "http://{{ public_ip["gitlab-cicd"] }}"'
+        backup: true
+
+
+    # - name: (Optional) Set admin email
+    #   lineinfile:
+    #     path: "{{ gitlab_config_path }}"
+    #     regexp: '^gitlab_rails\[''gitlab_email_from''\]'
+    #     line: 'gitlab_rails[\'gitlab_email_from\'] = "{{ gitlab_admin_email }}"'
+    #     backup: yes
+    #   when: gitlab_admin_email is defined
+
+    - name: Reconfigure GitLab
+      command: gitlab-ctl reconfigure
+      notify: Restart GitLab
+
+    - name: Set initial root password
+      script: set-gitlab-root-password.sh
+      args:
+        chdir: /tmp
+      environment:
+        GITLAB_ROOT_PASSWORD: "{{ gitlab_root_password }}"
+      when: gitlab_root_password is defined
+
+  handlers:
+    - name: Restart GitLab
+      command: gitlab-ctl restart
