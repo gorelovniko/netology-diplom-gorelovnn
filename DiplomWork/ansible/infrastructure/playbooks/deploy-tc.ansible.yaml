@@ -1,16 +1,16 @@
 ---
 - name: Deploy TeamCity Server
-  hosts: tc-server
+  hosts: teamcity-server
   tasks:
     - name: Install TeamCity server
       docker_container:
-        name: tc-server
+        name: teamcity-server
         image: jetbrains/teamcity-server
         state: started
         ports:
           - "8111:8111"
 - name: Deploy TeamCity Agent
-  hosts: tc-agent
+  hosts: teamcity-agent
   vars:
     agent_folder_path: "/home/ubuntu/teamcity_agent/conf"
   tasks:
@@ -23,7 +23,7 @@
             mode: "0777"
         - name: Install TeamCity Agent from Docker image
           docker_container:
-            name: tc-agent
+            name: teamcity-agent
             image: jetbrains/teamcity-agent:2022.10.1-linux-sudo
             privileged: true
             state: started

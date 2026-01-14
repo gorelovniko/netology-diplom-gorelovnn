@@ -1,6 +1,6 @@
 ---
 - name: Postgres installation
-  hosts: tc-server
+  hosts: teamcity-server
   become: true
   vars:
     postgres_root_user: admin

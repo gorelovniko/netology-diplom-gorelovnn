@@ -11,13 +11,17 @@ all:
       ansible_host: "{{ public_ip['node1'] }}"
     node2:
       ansible_host: "{{ public_ip['node2'] }}"
-    gitlab-cicd:
-      ansible_host: "{{ public_ip['gitlab-cicd'] }}"  
-      ansible_ssh_private_key_file: ~/.ssh/id_rsa  # Явно указать путь к ключу
-      ansible_python_interpreter: /usr/bin/python3.9
-      ansible_become: true
-      ansible_become_method: sudo
-      ansible_become_user: root
+    teamcity-server:
+      ansible_host: "{{ public_ip['teamcity-server'] }}"
+    teamcity-agent:
+      ansible_host: "{{ public_ip['teamcity-agent] }}"
+    # gitlab-cicd:
+    #   ansible_host: "{{ public_ip['gitlab-cicd'] }}"  
+    #   ansible_ssh_private_key_file: ~/.ssh/id_rsa  # Явно указать путь к ключу
+    #   ansible_python_interpreter: /usr/bin/python3.9
+    #   ansible_become: true
+    #   ansible_become_method: sudo
+    #   ansible_become_user: root
   children:
     k8n_cluster:
       hosts:
