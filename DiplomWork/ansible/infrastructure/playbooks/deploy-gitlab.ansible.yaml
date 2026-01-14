@@ -208,11 +208,11 @@
                 GITLAB_OMNIBUS_CONFIG: |
                   external_url '{{ gitlab_external_url }}'
                   gitlab_rails['gitlab_shell_ssh_port'] = {{ gitlab_ssh_port }}
-                  # Оптимизация для машин с ограниченными ресурсами
-                  puma['worker_processes'] = 2
-                  sidekiq['max_concurrency'] = 10
-                  postgresql['shared_buffers'] = "128MB"
-                  redis['maxmemory'] = "128mb"
+                  # # Оптимизация для машин с ограниченными ресурсами
+                  # puma['worker_processes'] = 2
+                  # sidekiq['max_concurrency'] = 10
+                  # postgresql['shared_buffers'] = "128MB"
+                  # redis['maxmemory'] = "128mb"
               ports:
                 - "8880:80"
                 - "8443:443"

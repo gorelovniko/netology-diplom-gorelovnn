@@ -3,10 +3,11 @@ resource "local_file" "public_ips_yaml" {
   content = <<-EOT
 ---
 public_ip:
-  cp1:       ${yandex_compute_instance.vm["cp1"].network_interface[0].nat_ip_address}
-  node1:     ${yandex_compute_instance.vm["node1"].network_interface[0].nat_ip_address}
-  node2:     ${yandex_compute_instance.vm["node2"].network_interface[0].nat_ip_address}
-  gitlab-cicd:     ${yandex_compute_instance.vm["gitlab-cicd"].network_interface[0].nat_ip_address}
+  cp1:             ${yandex_compute_instance.vm["cp1"].network_interface[0].nat_ip_address}
+  node1:           ${yandex_compute_instance.vm["node1"].network_interface[0].nat_ip_address}
+  node2:           ${yandex_compute_instance.vm["node2"].network_interface[0].nat_ip_address}
+  teamcity-server: ${yandex_compute_instance.vm["teamcity-server"].network_interface[0].nat_ip_address}
+  teamcity-agent:  ${yandex_compute_instance.vm["teamcity-agent"].network_interface[0].nat_ip_address}
 EOT
   
   depends_on = [yandex_compute_instance.vm]
