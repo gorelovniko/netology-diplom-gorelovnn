@@ -12,7 +12,7 @@
 - name: Deploy TeamCity Agent
   hosts: teamcity-agent
   vars:
-    agent_folder_path: "/home/ubuntu/teamcity_agent/conf"
+    agent_folder_path: "/home/nimda/teamcity_agent/conf"
   tasks:
     - name: Install TeamCity Agent
       block:
