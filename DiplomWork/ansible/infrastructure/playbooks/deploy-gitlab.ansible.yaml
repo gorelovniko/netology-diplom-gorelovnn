@@ -1,343 +1,343 @@
-# ---
-# - name: Deploy GitLab CE on Ubuntu 22.04
-#   hosts: gitlab-cicd
-#   tags: config-gitlab
-#   become: true
-#   vars:
-#     gitlab_config_path: "/etc/gitlab/gitlab.rb"
-#     ansible_python_interpreter: /usr/bin/python3
-
-#   tasks:
-#     - name: Check if Python3 is installed
-#       raw: which python3 || which python
-#       register: python_check
-#       changed_when: false
-#       ignore_errors: yes
-
-#     # - name: Install Python3 if not present
-#     #   raw: apt-get update && apt-get install -y python3 python3-minimal
-#     #   when: python_check.rc != 0
-
-#     # - name: Gather facts after Python installation
-#     #   setup:
-#     #   when: ansible_facts is not defined
-
-#     - name: Wait for SSH to be available
-#       wait_for_connection:
-#         timeout: 300
-
-#     - name: Update apt cache
-#       apt:
-#         update_cache: yes
-#         cache_valid_time: 3600
-
-#     - name: Install required packages
-#       apt:
-#         name:
-#           - ca-certificates
-#           - curl
-#           - openssh-server
-#           - tzdata
-#           - perl
-#         state: present
-
-#     - name: Add GitLab package repository
-#       shell: |
-#         curl -fsSL https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
-#       args:
-#         creates: /etc/apt/sources.list.d/gitlab_gitlab-ce.list
-
-#     - name: Install GitLab CE
-#       apt:
-#         name: gitlab-ce
-#         state: present
-#         update_cache: yes
-
-#     - name: Configure external URL in gitlab.rb
-#       lineinfile:
-#         path: "{{ gitlab_config_path }}"
-#         regexp: '^external_url '
-#         line: 'external_url "http://{{ public_ip["gitlab-cicd"] }}"'
-#         backup: true
-
-
-#     # - name: (Optional) Set admin email
-#     #   lineinfile:
-#     #     path: "{{ gitlab_config_path }}"
-#     #     regexp: '^gitlab_rails\[''gitlab_email_from''\]'
-#     #     line: 'gitlab_rails[\'gitlab_email_from\'] = "{{ gitlab_admin_email }}"'
-#     #     backup: yes
-#     #   when: gitlab_admin_email is defined
-
-#     - name: Reconfigure GitLab
-#       command: gitlab-ctl reconfigure
-#       notify: Restart GitLab
-
-#     - name: Set initial root password
-#       script: set-gitlab-root-password.sh
-#       args:
-#         chdir: /tmp
-#       environment:
-#         GITLAB_ROOT_PASSWORD: "{{ gitlab_root_password }}"
-#       when: gitlab_root_password is defined
-
-#     - name: Display GitLab info
-#       debug:
-#         msg: |
-#           GitLab has been installed!
-#           URL: {{ gitlab_external_url }}
-#           {% if root_password.stdout %}
-#           Initial root password: {{ root_password.stdout }}
-#           {% else %}
-#           Initial root password file not found. Check /etc/gitlab/initial_root_password
-#           {% endif %}
-
-#   handlers:
-#     - name: Restart GitLab
-#       command: gitlab-ctl restart
-
-
 ---
-- name: Deploy GitLab CE using Docker Compose v2
+- name: Deploy GitLab CE on Ubuntu 22.04
   hosts: gitlab-cicd
   tags: config-gitlab
-  # become_method: sudo
-  # become_user: nimda
   become: true
   vars:
+    gitlab_config_path: "/etc/gitlab/gitlab.rb"
     ansible_python_interpreter: /usr/bin/python3
-    gitlab_external_url: "http://{{ public_ip['gitlab-cicd'] }}"
-    gitlab_hostname: "{{ public_ip['gitlab-cicd'] }}"
-    gitlab_ssh_port: "2222"
-    gitlab_data_dir: "/srv/gitlab"
-    docker_compose_version: "v2.23.0"
 
   tasks:
-    # 1. Проверка Python3
     - name: Check if Python3 is installed
       raw: which python3 || which python
       register: python_check
       changed_when: false
       ignore_errors: true
 
-    # 2. Ожидание SSH доступности
+    # - name: Install Python3 if not present
+    #   raw: apt-get update && apt-get install -y python3 python3-minimal
+    #   when: python_check.rc != 0
+
+    # - name: Gather facts after Python installation
+    #   setup:
+    #   when: ansible_facts is not defined
+
     - name: Wait for SSH to be available
       wait_for_connection:
         timeout: 300
 
-    # 3. Установка системных зависимостей
     - name: Update apt cache
       apt:
         update_cache: yes
         cache_valid_time: 3600
 
-    - name: Install required system packages
+    - name: Install required packages
       apt:
         name:
-          - apt-transport-https
           - ca-certificates
           - curl
-          - gnupg
-          - lsb-release
-          - software-properties-common
+          - openssh-server
+          - tzdata
+          - perl
         state: present
 
-    # 4. Установка Docker (официальный метод)
-    - name: Install Docker using official script
+    - name: Add GitLab package repository
       shell: |
-        curl -fsSL https://get.docker.com -o get-docker.sh
-        sh get-docker.sh
+        curl -fsSL https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
       args:
-        creates: /usr/bin/docker
+        creates: /etc/apt/sources.list.d/gitlab_gitlab-ce.list
 
-    # 5. Настройка Docker
-    - name: Start and enable Docker service
-      systemd:
-        name: docker
-        state: started
-        enabled: yes
-        daemon_reload: yes
-
-    - name: Add user to docker group
-      user:
-        name: "{{ ansible_user }}"
-        groups: docker
-        append: yes
-
-    # # 6. Установка Docker Compose Plugin (v2)
-    # - name: Install Docker Compose Plugin
-    #   apt:
-    #     name: docker-compose-plugin
-    #     state: present
-    #   when: ansible_os_family == "Debian"
-
-    # # Альтернатива для других систем
-    # - name: Install Docker Compose binary (alternative)
-    #   get_url:
-    #     url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64"
-    #     dest: /usr/local/bin/docker-compose
-    #     mode: '0755'
-    #   when: ansible_os_family != "Debian"
-
-    # 7. Создание директорий для GitLab
-    - name: Create GitLab data directories
-      file:
-        path: "{{ gitlab_data_dir }}/{{ item }}"
-        state: directory
-        owner: root
-        group: root
-        mode: '0755'
-      loop:
-        - "config"
-        - "logs"
-        - "data"
-
-    # 8. Создание docker-compose.yml файла
-    - name: Create Docker Compose configuration for GitLab
-      copy:
-        dest: "{{ gitlab_data_dir }}/docker-compose.yml"
-        content: |
-          version: '3.8'
-          services:
-            gitlab:
-              image: gitlab/gitlab-ce:latest
-              container_name: gitlab
-              hostname: {{ gitlab_hostname }}
-              restart: unless-stopped
-              environment:
-                GITLAB_OMNIBUS_CONFIG: |
-                  external_url '{{ gitlab_external_url }}'
-                  gitlab_rails['gitlab_shell_ssh_port'] = {{ gitlab_ssh_port }}
-                  # # Оптимизация для машин с ограниченными ресурсами
-                  # puma['worker_processes'] = 2
-                  # sidekiq['max_concurrency'] = 10
-                  # postgresql['shared_buffers'] = "128MB"
-                  # redis['maxmemory'] = "128mb"
-              ports:
-                - "8880:80"
-                - "8443:443"
-                - "{{ gitlab_ssh_port }}:22"
-              volumes:
-                - "./config:/etc/gitlab"
-                - "./logs:/var/log/gitlab"
-                - "./data:/var/opt/gitlab"
-              healthcheck:
-                test: ["CMD", "curl", "-f", "http://localhost:8880/-/health"]
-                interval: 30s
-                timeout: 10s
-                retries: 3
-                start_period: 120s
-              networks:
-                - gitlab-network
-
-          networks:
-            gitlab-network:
-              driver: bridge
-        owner: root
-        group: root
-        mode: '0644'
-
-    # 9. Запуск GitLab через Docker Compose V2
-    - name: Start GitLab with Docker Compose V2
-      community.docker.docker_compose_v2:
-        project_src: "{{ gitlab_data_dir }}"
+    - name: Install GitLab CE
+      apt:
+        name: gitlab-ce
         state: present
+        update_cache: yes
 
-    # 10. Ожидание запуска GitLab
-    # - name: Wait for GitLab to be ready
-    #   uri:
-    #     url: "{{ gitlab_external_url }}/users/sign_in"
-    #     method: GET
-    #     status_code: 200
-    #     timeout: 60
-    #   register: gitlab_ready
-    #   until: gitlab_ready.status == 200
-    #   retries: 40  # GitLab может долго запускаться
-    #   delay: 15
-    #   ignore_errors: true
-    - name: Wait for GitLab to be ready
-      uri:
-        url: "http://{{ gitlab-cicd }}:{{ gitlab_port }}/-/health"
-        status_code: 200
-        timeout: 30
-      register: gitlab_ready
-      until: "gitlab_ready.status|int == 200"
-      retries: 30
-      delay: 10
-      ignore_errors: true
+    - name: Configure external URL in gitlab.rb
+      lineinfile:
+        path: "{{ gitlab_config_path }}"
+        regexp: '^external_url '
+        line: 'external_url "http://{{ public_ip["gitlab-cicd"] }}"'
+        backup: true
 
-    # 11. Получение пароля root
 
-    - name: Get initial root password
-      shell: |
-        docker exec gitlab \
-          grep 'Password:' /etc/gitlab/initial_root_password 2>/dev/null || echo "NOT_FOUND"
-      register: root_password
-      changed_when: false
-      ignore_errors: true
+    # - name: (Optional) Set admin email
+    #   lineinfile:
+    #     path: "{{ gitlab_config_path }}"
+    #     regexp: '^gitlab_rails\[''gitlab_email_from''\]'
+    #     line: 'gitlab_rails[\'gitlab_email_from\'] = "{{ gitlab_admin_email }}"'
+    #     backup: yes
+    #   when: gitlab_admin_email is defined
 
-    # - name: Get initial root password
-    #   shell: |
-    #     cd {{ gitlab_data_dir }} && \
-    #     docker compose exec -T gitlab \
-    #       bash -c 'cat /etc/gitlab/initial_root_password 2>/dev/null || echo "Waiting for password generation..."'
-    #   register: root_password
-    #   changed_when: false
-    #   retries: 20
-    #   delay: 30  # GitLab может долго генерировать пароль
-    #   until: "'Password:' in root_password.stdout"
+    - name: Reconfigure GitLab
+      command: gitlab-ctl reconfigure
+      notify: Restart GitLab
 
-    # # 12. Настройка firewall
-    # - name: Check if ufw is active
-    #   command: ufw status
-    #   register: ufw_status
-    #   changed_when: false
-    #   ignore_errors: yes
+    - name: Set initial root password
+      script: set-gitlab-root-password.sh
+      args:
+        chdir: /tmp
+      environment:
+        GITLAB_ROOT_PASSWORD: "{{ gitlab_root_password }}"
+      when: gitlab_root_password is defined
 
-    # - name: Open required ports in firewall
-    #   ufw:
-    #     rule: allow
-    #     port: "{{ item }}"
-    #     proto: tcp
-    #   loop:
-    #     - "80"
-    #     - "443"
-    #     - "{{ gitlab_ssh_port }}"
-    #   when: "'Status: active' in ufw_status.stdout"
-
-    # 13. Отображение информации о развертывании
-    - name: Display GitLab deployment information
+    - name: Display GitLab info
       debug:
         msg: |
-          ============================================
-          GitLab успешно развернут через Docker Compose!
-          
-          Основная информация:
-          - URL: {{ gitlab_external_url }}
-          - SSH порт GitLab: {{ gitlab_ssh_port }}
-          - Директория данных: {{ gitlab_data_dir }}
-          
-          Доступ:
+          GitLab has been installed!
+          URL: {{ gitlab_external_url }}
           {% if root_password.stdout %}
-          - Начальный пароль root: 
-            {{ root_password.stdout | trim }}
+          Initial root password: {{ root_password.stdout }}
           {% else %}
-          - Пароль root: выполните для получения:
-            cd {{ gitlab_data_dir }} && docker compose exec gitlab cat /etc/gitlab/initial_root_password
+          Initial root password file not found. Check /etc/gitlab/initial_root_password
           {% endif %}
-          
-          Команды управления:
-          - Проверить статус: cd {{ gitlab_data_dir }} && docker compose ps
-          - Просмотреть логи: cd {{ gitlab_data_dir }} && docker compose logs -f
-          - Остановить: cd {{ gitlab_data_dir }} && docker compose stop
-          - Запустить: cd {{ gitlab_data_dir }} && docker compose start
-          - Перезапустить: cd {{ gitlab_data_dir }} && docker compose restart
-          - Обновить: cd {{ gitlab_data_dir }} && docker compose pull && docker compose up -d
-          
-          ============================================
 
   handlers:
-    - name: Restart GitLab service
-      community.docker.docker_compose_v2:
-        project_src: "{{ gitlab_data_dir }}"
-        state: present
+    - name: Restart GitLab
+      command: gitlab-ctl restart
+
+
+# ---
+# - name: Deploy GitLab CE using Docker Compose v2
+#   hosts: gitlab-cicd
+#   tags: config-gitlab
+#   # become_method: sudo
+#   # become_user: nimda
+#   become: true
+#   vars:
+#     ansible_python_interpreter: /usr/bin/python3
+#     gitlab_external_url: "http://{{ public_ip['gitlab-cicd'] }}"
+#     gitlab_hostname: "{{ public_ip['gitlab-cicd'] }}"
+#     gitlab_ssh_port: "2222"
+#     gitlab_data_dir: "/srv/gitlab"
+#     docker_compose_version: "v2.23.0"
+
+#   tasks:
+#     # 1. Проверка Python3
+#     - name: Check if Python3 is installed
+#       raw: which python3 || which python
+#       register: python_check
+#       changed_when: false
+#       ignore_errors: true
+
+#     # 2. Ожидание SSH доступности
+#     - name: Wait for SSH to be available
+#       wait_for_connection:
+#         timeout: 300
+
+#     # 3. Установка системных зависимостей
+#     - name: Update apt cache
+#       apt:
+#         update_cache: yes
+#         cache_valid_time: 3600
+
+#     - name: Install required system packages
+#       apt:
+#         name:
+#           - apt-transport-https
+#           - ca-certificates
+#           - curl
+#           - gnupg
+#           - lsb-release
+#           - software-properties-common
+#         state: present
+
+#     # 4. Установка Docker (официальный метод)
+#     - name: Install Docker using official script
+#       shell: |
+#         curl -fsSL https://get.docker.com -o get-docker.sh
+#         sh get-docker.sh
+#       args:
+#         creates: /usr/bin/docker
+
+#     # 5. Настройка Docker
+#     - name: Start and enable Docker service
+#       systemd:
+#         name: docker
+#         state: started
+#         enabled: yes
+#         daemon_reload: yes
+
+#     - name: Add user to docker group
+#       user:
+#         name: "{{ ansible_user }}"
+#         groups: docker
+#         append: yes
+
+#     # # 6. Установка Docker Compose Plugin (v2)
+#     # - name: Install Docker Compose Plugin
+#     #   apt:
+#     #     name: docker-compose-plugin
+#     #     state: present
+#     #   when: ansible_os_family == "Debian"
+
+#     # # Альтернатива для других систем
+#     # - name: Install Docker Compose binary (alternative)
+#     #   get_url:
+#     #     url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64"
+#     #     dest: /usr/local/bin/docker-compose
+#     #     mode: '0755'
+#     #   when: ansible_os_family != "Debian"
+
+#     # 7. Создание директорий для GitLab
+#     - name: Create GitLab data directories
+#       file:
+#         path: "{{ gitlab_data_dir }}/{{ item }}"
+#         state: directory
+#         owner: root
+#         group: root
+#         mode: '0755'
+#       loop:
+#         - "config"
+#         - "logs"
+#         - "data"
+
+#     # 8. Создание docker-compose.yml файла
+#     - name: Create Docker Compose configuration for GitLab
+#       copy:
+#         dest: "{{ gitlab_data_dir }}/docker-compose.yml"
+#         content: |
+#           version: '3.8'
+#           services:
+#             gitlab:
+#               image: gitlab/gitlab-ce:latest
+#               container_name: gitlab
+#               hostname: {{ gitlab_hostname }}
+#               restart: unless-stopped
+#               environment:
+#                 GITLAB_OMNIBUS_CONFIG: |
+#                   external_url '{{ gitlab_external_url }}'
+#                   gitlab_rails['gitlab_shell_ssh_port'] = {{ gitlab_ssh_port }}
+#                   # # Оптимизация для машин с ограниченными ресурсами
+#                   # puma['worker_processes'] = 2
+#                   # sidekiq['max_concurrency'] = 10
+#                   # postgresql['shared_buffers'] = "128MB"
+#                   # redis['maxmemory'] = "128mb"
+#               ports:
+#                 - "8880:80"
+#                 - "8443:443"
+#                 - "{{ gitlab_ssh_port }}:22"
+#               volumes:
+#                 - "./config:/etc/gitlab"
+#                 - "./logs:/var/log/gitlab"
+#                 - "./data:/var/opt/gitlab"
+#               healthcheck:
+#                 test: ["CMD", "curl", "-f", "http://localhost:8880/-/health"]
+#                 interval: 30s
+#                 timeout: 10s
+#                 retries: 3
+#                 start_period: 120s
+#               networks:
+#                 - gitlab-network
+
+#           networks:
+#             gitlab-network:
+#               driver: bridge
+#         owner: root
+#         group: root
+#         mode: '0644'
+
+#     # 9. Запуск GitLab через Docker Compose V2
+#     - name: Start GitLab with Docker Compose V2
+#       community.docker.docker_compose_v2:
+#         project_src: "{{ gitlab_data_dir }}"
+#         state: present
+
+#     # 10. Ожидание запуска GitLab
+#     # - name: Wait for GitLab to be ready
+#     #   uri:
+#     #     url: "{{ gitlab_external_url }}/users/sign_in"
+#     #     method: GET
+#     #     status_code: 200
+#     #     timeout: 60
+#     #   register: gitlab_ready
+#     #   until: gitlab_ready.status == 200
+#     #   retries: 40  # GitLab может долго запускаться
+#     #   delay: 15
+#     #   ignore_errors: true
+#     - name: Wait for GitLab to be ready
+#       uri:
+#         url: "http://{{ gitlab-cicd }}:{{ gitlab_port }}/-/health"
+#         status_code: 200
+#         timeout: 30
+#       register: gitlab_ready
+#       until: "gitlab_ready.status|int == 200"
+#       retries: 30
+#       delay: 10
+#       ignore_errors: true
+
+#     # 11. Получение пароля root
+
+#     - name: Get initial root password
+#       shell: |
+#         docker exec gitlab \
+#           grep 'Password:' /etc/gitlab/initial_root_password 2>/dev/null || echo "NOT_FOUND"
+#       register: root_password
+#       changed_when: false
+#       ignore_errors: true
+
+#     # - name: Get initial root password
+#     #   shell: |
+#     #     cd {{ gitlab_data_dir }} && \
+#     #     docker compose exec -T gitlab \
+#     #       bash -c 'cat /etc/gitlab/initial_root_password 2>/dev/null || echo "Waiting for password generation..."'
+#     #   register: root_password
+#     #   changed_when: false
+#     #   retries: 20
+#     #   delay: 30  # GitLab может долго генерировать пароль
+#     #   until: "'Password:' in root_password.stdout"
+
+#     # # 12. Настройка firewall
+#     # - name: Check if ufw is active
+#     #   command: ufw status
+#     #   register: ufw_status
+#     #   changed_when: false
+#     #   ignore_errors: yes
+
+#     # - name: Open required ports in firewall
+#     #   ufw:
+#     #     rule: allow
+#     #     port: "{{ item }}"
+#     #     proto: tcp
+#     #   loop:
+#     #     - "80"
+#     #     - "443"
+#     #     - "{{ gitlab_ssh_port }}"
+#     #   when: "'Status: active' in ufw_status.stdout"
+
+#     # 13. Отображение информации о развертывании
+#     - name: Display GitLab deployment information
+#       debug:
+#         msg: |
+#           ============================================
+#           GitLab успешно развернут через Docker Compose!
+          
+#           Основная информация:
+#           - URL: {{ gitlab_external_url }}
+#           - SSH порт GitLab: {{ gitlab_ssh_port }}
+#           - Директория данных: {{ gitlab_data_dir }}
+          
+#           Доступ:
+#           {% if root_password.stdout %}
+#           - Начальный пароль root: 
+#             {{ root_password.stdout | trim }}
+#           {% else %}
+#           - Пароль root: выполните для получения:
+#             cd {{ gitlab_data_dir }} && docker compose exec gitlab cat /etc/gitlab/initial_root_password
+#           {% endif %}
+          
+#           Команды управления:
+#           - Проверить статус: cd {{ gitlab_data_dir }} && docker compose ps
+#           - Просмотреть логи: cd {{ gitlab_data_dir }} && docker compose logs -f
+#           - Остановить: cd {{ gitlab_data_dir }} && docker compose stop
+#           - Запустить: cd {{ gitlab_data_dir }} && docker compose start
+#           - Перезапустить: cd {{ gitlab_data_dir }} && docker compose restart
+#           - Обновить: cd {{ gitlab_data_dir }} && docker compose pull && docker compose up -d
+          
+#           ============================================
+
+#   handlers:
+#     - name: Restart GitLab service
+#       community.docker.docker_compose_v2:
+#         project_src: "{{ gitlab_data_dir }}"
+#         state: present
