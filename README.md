@@ -1164,15 +1164,57 @@ nimda@vm1:custom-tc$
 <details>
 <summary>ansible-playbook -i inventory/hosts.yaml playbooks/deploy-tc.ansible.yaml </summary>
 
+```bash
+nimda@vm1:infrastructure$ ansible-playbook -i inventory/hosts.yaml playbooks/deploy-tc.ansible.yaml 
 
+PLAY [Deploy TeamCity Server] *********************************************************************************************************************
+
+TASK [Gathering Facts] ****************************************************************************************************************************
+ok: [teamcity-server]
+
+TASK [Install TeamCity server] ********************************************************************************************************************
+ok: [teamcity-server]
+
+PLAY [Deploy TeamCity Agent] **********************************************************************************************************************
+
+TASK [Gathering Facts] ****************************************************************************************************************************
+ok: [teamcity-agent]
+
+TASK [Ensure .kube directory exists on host] ******************************************************************************************************
+ok: [teamcity-agent]
+
+TASK [Copy kubeconfig to host if needed] **********************************************************************************************************
+ok: [teamcity-agent]
+
+TASK [Create Teamcity Agent folder] ***************************************************************************************************************
+ok: [teamcity-agent]
+
+TASK [Install TeamCity Agent from Docker image] ***************************************************************************************************
+changed: [teamcity-agent]
+
+PLAY RECAP ****************************************************************************************************************************************
+teamcity-agent             : ok=5    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+teamcity-server            : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+```
 
 </details>
 <br>
 
-
-
-
 Заходим на teamcity-server и начинаем первоначальную настройку:
+
+![](./DiplomWork/img/tc-begin-1.png)  
+![](./DiplomWork/img/tc-begin-2.png)  
+![](./DiplomWork/img/tc-begin-3.png)  
+![](./DiplomWork/img/tc-begin-4.png)  
+![](./DiplomWork/img/tc-begin-5.png)  
+![](./DiplomWork/img/tc-begin-6.png)  
+![](./DiplomWork/img/tc-begin-7.png)  
+![](./DiplomWork/img/tc-begin-8.png)  
+![](./DiplomWork/img/tc-begin-9.png)  
+![](./DiplomWork/img/tc-begin-10.png)  
+![](./DiplomWork/img/tc-begin-11.png)  
+
+
 
 
 
