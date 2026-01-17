@@ -16,6 +16,22 @@
   tasks:
     - name: Install TeamCity Agent
       block:
+        - name: Ensure .kube directory exists on host
+          file:
+            path: /home/{{ ansible_user }}/.kube
+            state: directory
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
+            mode: '0700'
+
+        - name: Copy kubeconfig to host if needed
+          copy:
+            src: "{{ kubeconfig_src_path }}"          # путь на контроллере Ansible
+            dest: /home/{{ ansible_user }}/.kube/config
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
+            mode: '0600'
+
         - name: Create Teamcity Agent folder
           ansible.builtin.file:
             path: "{{ agent_folder_path }}"
@@ -24,145 +40,12 @@
         - name: Install TeamCity Agent from Docker image
           docker_container:
             name: teamcity-agent
-            image: jetbrains/teamcity-agent:2022.10.1-linux-sudo
+            image: nikogorelov/my-teamcity-agent-with-kubectl-terraform:2022.10.1
             privileged: true
             state: started
             volumes:
               - "{{ agent_folder_path }}:/data/teamcity_agent/conf"
+              - "/home/{{ ansible_user }}/.kube/config:/root/.kube/config:ro"
             env:
               SERVER_URL: "10.10.10.10:8111"
               DOCKER_IN_DOCKER: "start"
-# #    - name: Install Helm on TeamCity Agent host
-# #      block:
-# #        - name: Download  'Helm' installation script
-# #          ansible.builtin.get_url:
-# #            url: https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-# #            dest: /home/ubuntu/get-helm-3.sh
-# #            mode: '0750'
-# #        - name: Install 'Helm' with the installation script
-# #          ansible.builtin.shell: /home/ubuntu/get-helm-3.sh
-
-
-# ---
-# - name: Deploy TeamCity Server
-#   hosts: teamcity-server
-#   become: true
-#   tasks:
-#     # - name: Ensure Docker is installed
-#     #   ansible.builtin.package:
-#     #     name: docker.io
-#     # #     state: present
-
-#     # - name: Ensure Docker service is running
-#     #   ansible.builtin.service:
-#     #     name: docker
-#     #     state: started
-#     #     enabled: yes
-
-#     - name: Deploy TeamCity Server container
-#       docker_container:
-#         name: teamcity-server
-#         image: jetbrains/teamcity-server:latest
-#         state: started
-#         restart_policy: always
-#         ports:
-#           - "8111:8111"
-#         volumes:
-#           - teamcity_data:/data/teamcity_server/datadir
-#           - teamcity_logs:/opt/teamcity/logs
-#       register: tc_server
-
-#     - name: Wait for TeamCity to become ready
-#       wait_for:
-#         port: 8111
-#         host: "0.0.0.0"
-#         delay: 10
-#         timeout: 120
-#       when: tc_server.changed
-
-# - name: Deploy TeamCity Build Agent
-#   hosts: teamcity-agent
-#   become: true
-#   vars:
-#     agent_conf_dir: "/opt/teamcity-agent/conf"
-#     kubeconfig_path: "/home/nimda/.kube/config"  # измените, если другой пользователь
-#   tasks:
-#     # - name: Ensure Docker is installed
-#     #   ansible.builtin.package:
-#     #     name: docker.io
-#     #     state: present
-
-#     # - name: Ensure Docker service is running
-#     #   ansible.builtin.service:
-#     #     name: docker
-#     #     state: started
-#     #     enabled: yes
-
-#     - name: Install kubectl (required for Kubernetes deployment)
-#       shell: |
-#         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-#         chmod +x kubectl
-#         mv kubectl /usr/local/bin/
-#       args:
-#         creates: /usr/local/bin/kubectl
-
-#     - name: Create TeamCity Agent config directory
-#       ansible.builtin.file:
-#         path: "{{ agent_conf_dir }}"
-#         state: directory
-#         # owner: 1000
-#         # group: 1000
-#         mode: "0777"
-
-#     - name: Ensure .kube directory exists
-#       file:
-#         path: /root/.kube
-#         state: directory
-#         owner: root
-#         group: root
-#         mode: '0700'
-
-#     # - name: Ensure kubeconfig exists and is readable
-#     #   ansible.builtin.stat:
-#     #     path: "{{ kubeconfig_path }}"
-#     #   register: kubeconfig_stat
-#     #   failed_when: not kubeconfig_stat.stat.exists
-#     - name: Ensure kubeconfig exists and is readable
-#       copy:
-#         src: "{{ kubeconfig_path }}"  # Path on Ansible controller
-#         dest: "{{ kubeconfig_dest_path }}"  # Path on teamcity-agent
-#         owner: "{{ ansible_user }}"
-#         group: "{{ ansible_user }}"
-#         mode: '0600'
-#       vars:
-#         kubeconfig_dest_path: "~/.kube/config"
-
-#     - name: Deploy TeamCity Agent container
-#       docker_container:
-#         name: teamcity-agent
-#         image: jetbrains/teamcity-agent:latest
-#         state: started
-#         restart_policy: always
-#         privileged: false  # не обязательно true, если используем docker.sock
-#         volumes:
-#           - "{{ agent_conf_dir }}:/data/teamcity_agent/conf"
-#           - "/var/run/docker.sock:/var/run/docker.sock"   # для docker build/push
-#           - "{{ kubeconfig_path }}:/root/.kube/config:ro" # для kubectl
-#         env:
-#           # SERVER_URL: "http://10.10.10.10:8111"  # ← УБЕДИТЕСЬ, ЧТО IP ДОСТУПЕН С АГЕНТА!
-#           SERVER_URL: "http://teamcity-server:8111"  # ← УБЕДИТЕСЬ, ЧТО IP ДОСТУПЕН С АГЕНТА!
-#           DOCKER_IN_DOCKER: "start"  # опционально; можно убрать, если используете docker.sock
-#         pull: true
-
-#     # - name: Deploy TeamCity Agent container (initial run)
-#     #   docker_container:
-#     #     name: teamcity-agent
-#     #     image: jetbrains/teamcity-agent:latest
-#     #     state: started
-#     #     restart_policy: always
-#     #     volumes:
-#     #       - "/var/run/docker.sock:/var/run/docker.sock"
-#     #       - "{{ kubeconfig_path }}:/root/.kube/config:ro"
-#     #     env:
-#     #       SERVER_URL: "http://teamcity-server:8111"
-#     #     pull: true

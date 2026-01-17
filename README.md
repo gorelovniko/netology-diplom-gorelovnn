@@ -8,6 +8,7 @@
     * [Создание Kubernetes кластера](#создание-kubernetes-кластера)
     * [Создание тестового приложения](#создание-тестового-приложения)
     * [Подготовка cистемы мониторинга и деплой приложения](#подготовка-cистемы-мониторинга-и-деплой-приложения)
+      * [Деплой инфраструктуры в terraform pipeline](#деплой-инфраструктуры-в-terraform-pipeline)
     * [Установка и настройка CI/CD](#установка-и-настройка-cicd)
 * [Что необходимо для сдачи задания?](#что-необходимо-для-сдачи-задания)
 * [Как правильно задавать вопросы дипломному руководителю?](#как-правильно-задавать-вопросы-дипломному-руководителю)
@@ -879,5 +880,326 @@ ADD nginx/nginx.conf /nginx/nginx.conf
 
 Этот пакет содержит в себе полный набор инструментов, позволяющих реализовать мониторинг кластера и приложений, работающих в нём.
 
-Клонируем [Kube-Prometheus](https://github.com/prometheus-operator/kube-prometheus) в папку с проектом и выполним следующее:
+Итак развернём его в нашем кластере.
 
+Клонируем [Kube-Prometheus](https://github.com/prometheus-operator/kube-prometheus) в папку с проектом, перейдём в неё и выполним следующее:
+
+```bash
+
+cd ./netology-diplom-gorelovnn/DiplomWork/kube-prometheus/
+
+# Создадим отдельный namespace
+kubectl create namespace monitoring
+
+# Применяем CRDs и настройки
+kubectl apply --server-side -f manifests/setup/
+
+```
+![](./DiplomWork/img/14-kube-prometheus-deploy.png)
+
+
+```bash
+
+# Ждём, пока все CRD станут ready
+kubectl wait \
+  --for condition=Established \
+  --all CustomResourceDefinition \
+  --namespace=monitoring
+
+```
+![](./DiplomWork/img/15-kube-prometheus-deploy1.png)
+
+```bash
+
+kubectl apply -f manifests/
+
+```
+
+<details>
+<summary>kubectl apply -f manifests/</summary>
+
+nimda@vm1:kube-prometheus$ kubectl apply -f manifests/
+alertmanager.monitoring.coreos.com/main created
+networkpolicy.networking.k8s.io/alertmanager-main created
+poddisruptionbudget.policy/alertmanager-main created
+prometheusrule.monitoring.coreos.com/alertmanager-main-rules created
+secret/alertmanager-main created
+service/alertmanager-main created
+serviceaccount/alertmanager-main created
+servicemonitor.monitoring.coreos.com/alertmanager-main created
+clusterrole.rbac.authorization.k8s.io/blackbox-exporter created
+clusterrolebinding.rbac.authorization.k8s.io/blackbox-exporter created
+configmap/blackbox-exporter-configuration created
+deployment.apps/blackbox-exporter created
+networkpolicy.networking.k8s.io/blackbox-exporter created
+service/blackbox-exporter created
+serviceaccount/blackbox-exporter created
+servicemonitor.monitoring.coreos.com/blackbox-exporter created
+secret/grafana-config created
+secret/grafana-datasources created
+configmap/grafana-dashboard-alertmanager-overview created
+configmap/grafana-dashboard-apiserver created
+configmap/grafana-dashboard-cluster-total created
+configmap/grafana-dashboard-controller-manager created
+configmap/grafana-dashboard-grafana-overview created
+configmap/grafana-dashboard-k8s-resources-cluster created
+configmap/grafana-dashboard-k8s-resources-multicluster created
+configmap/grafana-dashboard-k8s-resources-namespace created
+configmap/grafana-dashboard-k8s-resources-node created
+configmap/grafana-dashboard-k8s-resources-pod created
+configmap/grafana-dashboard-k8s-resources-windows-cluster created
+configmap/grafana-dashboard-k8s-resources-windows-namespace created
+configmap/grafana-dashboard-k8s-resources-windows-pod created
+configmap/grafana-dashboard-k8s-resources-workload created
+configmap/grafana-dashboard-k8s-resources-workloads-namespace created
+configmap/grafana-dashboard-k8s-windows-cluster-rsrc-use created
+configmap/grafana-dashboard-k8s-windows-node-rsrc-use created
+configmap/grafana-dashboard-kubelet created
+configmap/grafana-dashboard-namespace-by-pod created
+configmap/grafana-dashboard-namespace-by-workload created
+configmap/grafana-dashboard-node-cluster-rsrc-use created
+configmap/grafana-dashboard-node-rsrc-use created
+configmap/grafana-dashboard-nodes-aix created
+configmap/grafana-dashboard-nodes-darwin created
+configmap/grafana-dashboard-nodes created
+configmap/grafana-dashboard-persistentvolumesusage created
+configmap/grafana-dashboard-pod-total created
+configmap/grafana-dashboard-prometheus-remote-write created
+configmap/grafana-dashboard-prometheus created
+configmap/grafana-dashboard-proxy created
+configmap/grafana-dashboard-scheduler created
+configmap/grafana-dashboard-workload-total created
+configmap/grafana-dashboards created
+deployment.apps/grafana created
+networkpolicy.networking.k8s.io/grafana created
+prometheusrule.monitoring.coreos.com/grafana-rules created
+service/grafana created
+serviceaccount/grafana created
+servicemonitor.monitoring.coreos.com/grafana created
+prometheusrule.monitoring.coreos.com/kube-prometheus-rules created
+clusterrole.rbac.authorization.k8s.io/kube-state-metrics created
+clusterrolebinding.rbac.authorization.k8s.io/kube-state-metrics created
+deployment.apps/kube-state-metrics created
+networkpolicy.networking.k8s.io/kube-state-metrics created
+prometheusrule.monitoring.coreos.com/kube-state-metrics-rules created
+service/kube-state-metrics created
+serviceaccount/kube-state-metrics created
+servicemonitor.monitoring.coreos.com/kube-state-metrics created
+prometheusrule.monitoring.coreos.com/kubernetes-monitoring-rules created
+servicemonitor.monitoring.coreos.com/kube-apiserver created
+servicemonitor.monitoring.coreos.com/coredns created
+servicemonitor.monitoring.coreos.com/kube-controller-manager created
+servicemonitor.monitoring.coreos.com/kube-scheduler created
+servicemonitor.monitoring.coreos.com/kubelet created
+clusterrole.rbac.authorization.k8s.io/node-exporter created
+clusterrolebinding.rbac.authorization.k8s.io/node-exporter created
+daemonset.apps/node-exporter created
+networkpolicy.networking.k8s.io/node-exporter created
+prometheusrule.monitoring.coreos.com/node-exporter-rules created
+service/node-exporter created
+serviceaccount/node-exporter created
+servicemonitor.monitoring.coreos.com/node-exporter created
+clusterrole.rbac.authorization.k8s.io/prometheus-k8s created
+clusterrolebinding.rbac.authorization.k8s.io/prometheus-k8s created
+networkpolicy.networking.k8s.io/prometheus-k8s created
+poddisruptionbudget.policy/prometheus-k8s created
+prometheus.monitoring.coreos.com/k8s created
+prometheusrule.monitoring.coreos.com/prometheus-k8s-prometheus-rules created
+rolebinding.rbac.authorization.k8s.io/prometheus-k8s-config created
+rolebinding.rbac.authorization.k8s.io/prometheus-k8s created
+rolebinding.rbac.authorization.k8s.io/prometheus-k8s created
+rolebinding.rbac.authorization.k8s.io/prometheus-k8s created
+role.rbac.authorization.k8s.io/prometheus-k8s-config created
+role.rbac.authorization.k8s.io/prometheus-k8s created
+role.rbac.authorization.k8s.io/prometheus-k8s created
+role.rbac.authorization.k8s.io/prometheus-k8s created
+service/prometheus-k8s created
+serviceaccount/prometheus-k8s created
+servicemonitor.monitoring.coreos.com/prometheus-k8s created
+apiservice.apiregistration.k8s.io/v1beta1.metrics.k8s.io created
+clusterrole.rbac.authorization.k8s.io/prometheus-adapter created
+clusterrole.rbac.authorization.k8s.io/system:aggregated-metrics-reader created
+clusterrolebinding.rbac.authorization.k8s.io/prometheus-adapter created
+clusterrolebinding.rbac.authorization.k8s.io/resource-metrics:system:auth-delegator created
+clusterrole.rbac.authorization.k8s.io/resource-metrics-server-resources created
+configmap/adapter-config created
+deployment.apps/prometheus-adapter created
+networkpolicy.networking.k8s.io/prometheus-adapter created
+poddisruptionbudget.policy/prometheus-adapter created
+rolebinding.rbac.authorization.k8s.io/resource-metrics-auth-reader created
+service/prometheus-adapter created
+serviceaccount/prometheus-adapter created
+servicemonitor.monitoring.coreos.com/prometheus-adapter created
+clusterrole.rbac.authorization.k8s.io/prometheus-operator created
+clusterrolebinding.rbac.authorization.k8s.io/prometheus-operator created
+deployment.apps/prometheus-operator created
+networkpolicy.networking.k8s.io/prometheus-operator created
+prometheusrule.monitoring.coreos.com/prometheus-operator-rules created
+service/prometheus-operator created
+serviceaccount/prometheus-operator created
+servicemonitor.monitoring.coreos.com/prometheus-operator created
+
+</details>
+<br>
+
+Доступ к развернутым в кластере приложениям мониторинга можно организовать несколькими способами, например:
+- создать сервис вида NodePort, и получать доступ по внешним IP-адресам любой из нод кластера
+в диапазоне портов от 30000 до 32768;
+- создать сервис вида LoadBalancer и получать доступ по единому IP-адресу балансировщика через любой желаемый порт;
+- организовать сетевой балансировщик нагрузки на уровне облачного провайдера;
+- воспользоваться проброской портов и получить доступ к сервисам мониторинга из локального окружения.
+
+Воспользуемся последним из перечисленных способов по причине его простоты.
+
+Когда все ресурсы запустились, можно выполнить проброску портов кластера в локальное окружение с помощью команды
+`kubectl port-forward`:
+
+````bash
+$ kubectl --namespace monitoring port-forward svc/prometheus-k8s 9090
+Forwarding from 127.0.0.1:9090 -> 9090
+Forwarding from [::1]:9090 -> 9090
+Handling connection for 9090
+...
+$ kubectl --namespace monitoring port-forward svc/grafana 3000
+Forwarding from 127.0.0.1:3000 -> 3000
+Forwarding from [::1]:3000 -> 3000
+Handling connection for 3000
+...
+$ kubectl --namespace monitoring port-forward svc/alertmanager-main 9093
+Forwarding from 127.0.0.1:9093 -> 9093
+Forwarding from [::1]:9093 -> 9093
+Handling connection for 9093
+...
+````
+
+
+
+<!-- Для деплоя приложения создадим отдельный файл и применим его:
+
+[deploy-app](./DiplomWork/deploy-app/app-deployment.yaml) -->
+
+Ожидаемый результат:
+1. Git репозиторий с конфигурационными файлами для настройки Kubernetes.
+2. Http доступ на 80 порту к web интерфейсу grafana.
+3. Дашборды в grafana отображающие состояние Kubernetes кластера.
+4. Http доступ на 80 порту к тестовому приложению.
+5. Atlantis или terraform cloud или ci/cd-terraform
+# допиши отчет
+
+---
+
+## <a name="Деплой инфраструктуры в terraform pipeline">Деплой инфраструктуры в terraform pipeline</a>
+
+Нам нужен custom image teamcity-agent с kubectl and terraform. Создадим его и поместим в свой docker repo:
+
+Перейдём в папку custom-tc и выполним:
+
+```bash
+
+docker build -t nikogorelov/my-teamcity-agent-with-kubectl-terraform:2022.10.1 .
+[1]+  Выход 1            docker build -t nikogorelov/my-teamcity-agent-with-kubectl
+Sending build context to Docker daemon  90.23MB
+Step 1/4 : FROM jetbrains/teamcity-agent:2022.10.1-linux-sudo
+ ---> e4e1fa029b83
+Step 2/4 : USER root
+ ---> Running in bbf86e524072
+Removing intermediate container bbf86e524072
+ ---> 8424fae4b448
+Step 3/4 : RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" &&     install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl &&     rm kubectl
+ ---> Running in 05dd518032d9
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   138  100   138    0     0    295      0 --:--:-- --:--:-- --:--:--   294
+100 55.8M  100 55.8M    0     0  13.2M      0  0:00:04  0:00:04 --:--:-- 19.5M
+Removing intermediate container 05dd518032d9
+ ---> 00f6d80ac5ac
+Step 4/4 : COPY terraform /usr/local/bin/
+ ---> 9144d02e4e58
+Successfully built 9144d02e4e58
+Successfully tagged nikogorelov/my-teamcity-agent-with-kubectl-terraform:2022.10.1
+
+```
+
+Пушим в личный docker-repo:
+
+```bash
+
+nimda@vm1:custom-tc$ docker push nikogorelov/my-teamcity-agent-with-kubectl-terraform:2022.10.1
+The push refers to repository [docker.io/nikogorelov/my-teamcity-agent-with-kubectl-terraform]
+a7bcec7ab6a7: Pushed 
+7eff99156721: Pushed 
+f403b424a9b9: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+47d9a0a040f3: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+f6d61128209c: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+19f1bbe3a06a: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+5b52b5406db5: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+859128f7a878: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+c645ad3d930a: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+3dbef38f68a1: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+c6b1a079f1fd: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+81a1f95d0d36: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+ffc620469d7f: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+f4462d5b2da2: Mounted from nikogorelov/my-teamcity-agent-with-kubectl 
+2022.10.1: digest: sha256:c5a26c30f28a310525dffa931cf324f632b3769d3f4c6efaa0a4d636f9e2f6ff size: 3262
+nimda@vm1:custom-tc$ 
+
+```
+
+![](./DiplomWork/img/my-own-tcagent-with-kubectl-terraform.png)
+
+
+
+Для CI/CD разворачиваем ещё два инстанса:
+1. teamcity-server
+2. teamcity-agent со своим образом
+
+Использование образов, оптимизированных для использования Docker, обусловлено тем, что для работы агентов Teamcity
+необходим демон Docker для сборки образов на основе Dockerfile и отправки их в регистр. В образах, оптимизированных
+для запуска Docker-контейнеров демон Docker уже установлен, что экономит нам ресурсы.
+
+ С помощью ansible устанавливаем teamcity сервер и агент. Производим первоначальную настройку:
+
+[==deploy-tc.ansible.yaml==](./DiplomWork/ansible/infrastructure/playbooks/deploy-tc.ansible.yaml)
+
+<details>
+<summary>ansible-playbook -i inventory/hosts.yaml playbooks/deploy-tc.ansible.yaml </summary>
+
+
+
+</details>
+<br>
+
+
+
+
+Заходим на teamcity-server и начинаем первоначальную настройку:
+
+
+
+
+---
+
+## <a name="Установка и настройка CI/CD">Установка и настройка CI/CD</a>
+
+Осталось настроить ci/cd систему для автоматической сборки docker image и деплоя приложения при изменении кода.
+
+Цель:
+
+1. Автоматическая сборка docker образа при коммите в репозиторий с тестовым приложением.
+2. Автоматический деплой нового docker образа.
+
+
+
+
+
+
+
+
+### Ожидаемый результат достигнут:
+
+
+1. Интерфейс ci/cd сервиса доступен по http.
+2. При любом коммите в репозиторие с тестовым приложением происходит сборка и отправка в регистр Docker образа.
+3. При создании тега (например, v1.0.0) происходит сборка и отправка с соответствующим label в регистри, а также деплой соответствующего Docker образа в кластер Kubernetes.
+
+---

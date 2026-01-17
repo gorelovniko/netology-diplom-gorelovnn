@@ -3,5 +3,5 @@ public_ip:
   cp1:             178.154.220.138
   node1:           158.160.66.210
   node2:           158.160.167.127
-  teamcity-server: 178.154.203.168
-  teamcity-agent:  178.154.221.161
+  teamcity-server: 130.193.36.171
+  teamcity-agent:  158.160.126.179

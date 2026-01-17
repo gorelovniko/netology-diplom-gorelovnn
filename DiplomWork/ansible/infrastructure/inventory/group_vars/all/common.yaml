@@ -16,6 +16,7 @@ kube_pods_subnet: 10.200.0.0/16 # Network to be created/used by CNI.
 
 ansible_user: "nimda"
 
+kubeconfig_src_path: "/home/nimda/.kube/config"
 kubespray_gitclone_url: "https://github.com/kubernetes-sigs/kubespray.git"
 kubespray_dir: "/home/nimda/kubespray"
 
