@@ -38,3 +38,51 @@ spec:
       port: 80
       targetPort: 80
   type: ClusterIP  # Сделаем LoadBalancer далее
+
+
+
+
+
+
+
+
+
+# # k8s/deployment.yaml
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: diploma-webapp
+#   namespace: production
+# spec:
+#   replicas: 2
+#   selector:
+#     matchLabels:
+#       app: diploma-webapp
+#   template:
+#     metadata:
+#       labels:
+#         app: diploma-webapp
+#     spec:
+#       containers:
+#       - name: diploma-webapp
+#         image: your-registry/diploma-webapp:latest  # ← будет обновляться через kubectl set image
+#         ports:
+#         - containerPort: 8080
+#         resources:
+#           limits:
+#             memory: "512Mi"
+#             cpu: "500m"
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: diploma-webapp-svc
+#   namespace: production
+# spec:
+#   selector:
+#     app: diploma-webapp
+#   ports:
+#     - protocol: TCP
+#       port: 80
+#       targetPort: 8080
+#   type: ClusterIP
