@@ -54,7 +54,6 @@ spec:
       port: 80
       targetPort: 80
 
-
 # ---
 # # app-loadbalancer.yaml
 # apiVersion: v1
