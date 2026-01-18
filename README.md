@@ -10,8 +10,6 @@
     * [Подготовка cистемы мониторинга и деплой приложения](#подготовка-cистемы-мониторинга-и-деплой-приложения)
       * [Деплой инфраструктуры в terraform pipeline](#деплой-инфраструктуры-в-terraform-pipeline)
     * [Установка и настройка CI/CD](#установка-и-настройка-cicd)
-* [Что необходимо для сдачи задания?](#что-необходимо-для-сдачи-задания)
-* [Как правильно задавать вопросы дипломному руководителю?](#как-правильно-задавать-вопросы-дипломному-руководителю)
 
 ---
 
@@ -1090,19 +1088,54 @@ Handling connection for 9093
 ...
 ````
 
+![](./DiplomWork/img/grafama-metrics-pods.png)
 
 
-<!-- Для деплоя приложения создадим отдельный файл и применим его:
+Для Http доступа на 80 порту к тестовому приложению я использовал NLB:  
 
-[deploy-app](./DiplomWork/deploy-app/app-deployment.yaml) -->
+[==nlb.tf==](./DiplomWork/terraform/03-main-infrastructure/nlb.tf)  
 
-Ожидаемый результат:
-1. Git репозиторий с конфигурационными файлами для настройки Kubernetes.
-2. Http доступ на 80 порту к web интерфейсу grafana.
-3. Дашборды в grafana отображающие состояние Kubernetes кластера.
-4. Http доступ на 80 порту к тестовому приложению.
-5. Atlantis или terraform cloud или ci/cd-terraform
-# допиши отчет
+Создал network_load_balancer для приложения. И прикрутил к приложению ip этого балансера после создания.
+
+```bash
+resource "yandex_lb_network_load_balancer" "nlb-app" {
+  name = "nlb-my-k8s-app"
+
+  listener {
+    name        = "app-listener"
+    port        = 80
+    target_port = local.app_nodeport
+    external_address_spec {
+      # address = yandex_vpc_address.app_lb_ip.address 
+      ip_version = "ipv4"
+    }
+  }
+
+  attached_target_group {
+    target_group_id = yandex_lb_target_group.k8s-nodes-tg.id
+
+    healthcheck {
+      name = "app-healthcheck"
+      tcp_options {
+        port = local.app_nodeport
+      }
+      timeout             = 5
+      interval            = 10
+      healthy_threshold   = 2
+      unhealthy_threshold = 2
+    }
+  }
+```
+
+Получил доступ к приложению через ip адрес NLB:
+
+![](./DiplomWork/img/nlb-web-app-2.png)  
+![](./DiplomWork/img/nlb-web-app-1.png)  
+
+Сборка и деплой приложения,которые сделаны на последнем этапе также прошли без ошибок.
+
+![](./DiplomWork/img/nlb-web-app-3.png)  
+![](./DiplomWork/img/nlb-web-app-4.png)  
 
 ---
 
@@ -1238,6 +1271,7 @@ teamcity-server            : ok=2    changed=0    unreachable=0    failed=0    s
 
 ![](./DiplomWork/img/tc-begin-5.png)  
 
+
 И первое что нам нужно сделать - это авторизовать агента, который и будет выполнять сборки CI/CD;
 
 ![](./DiplomWork/img/tc-begin-6.png)  
@@ -1248,24 +1282,99 @@ teamcity-server            : ok=2    changed=0    unreachable=0    failed=0    s
 
 Теперь можно создавать проекты по сборке и доставке;
 
+![](./DiplomWork/img/tc-begin-8.png)  
 
+Всё тривиально и не должно вызвать проблем;
 
-
-
-
-
-
-
-
-<!-- ![](./DiplomWork/img/tc-begin-8.png)  
 ![](./DiplomWork/img/tc-begin-9.png)  
+
+Пока откажемся привязывать какой-либо из репозиториев. Настройкой займёмся внутри конфигурации сборки;
+
 ![](./DiplomWork/img/tc-begin-10.png)  
-![](./DiplomWork/img/tc-begin-11.png)   -->
+
+Название даём понятно и не громоздкое;
+
+![](./DiplomWork/img/tc-begin-12.png)
 
 
+Первая страница заполнится автоматически при создании проекта;
+
+![](./DiplomWork/img/tc-terraform-1.png)
+
+Добавляем репозиторий для отслеживания запоняя логин и токен(созданный заранее в личном кабинете github);
+
+![](./DiplomWork/img/tc-terraform-2.png)
+
+Добавляем триггер для автоматического запуска сборки. У нас это будут любые изменения в репозитории на любых ветках;
+
+![](./DiplomWork/img/tc-terraform-3.png)
+
+Добавляем чувствительные переменные, которые будут использоваться на следующем этапе настройки;
+
+![](./DiplomWork/img/tc-terraform-4.png)
+
+Будет один единствнный этап с кодом:
+
+```bash
+#!/bin/bash
+set -e
+
+cd ./DiplomWork/terraform/03-main-infrastructure
+
+# 1. Создаём .terraformrc с зеркалом Yandex Cloud
+cat > ~/.terraformrc << 'EOF'
+provider_installation {
+  network_mirror {
+    url     = "https://terraform-mirror.yandexcloud.net/"
+    include = ["registry.terraform.io/*/*"]
+  }
+  direct {
+    exclude = ["registry.terraform.io/*/*"]
+  }
+}
+EOF
 
 
+# === 1. Запись ключа сервисного аккаунта во временный файл ===
+KEY_FILE="/tmp/yc-sa-key.json"
+echo "$YC_SERVICE_ACCOUNT_KEY" > "$KEY_FILE"
+chmod 600 "$KEY_FILE"
 
+# === 2. Инициализация Terraform ===
+terraform init
+
+# === 3. Проверка плана (опционально, но рекомендуется) ===
+terraform plan \
+  -var="cloud_id=%env.YC_CLOUD_ID%" \
+  -var="authorized_key=$KEY_FILE" \
+  -var="folder_id=%env.YC_FOLDER_ID%"
+
+# === 4. Применение изменений ===
+terraform apply -auto-approve \
+  -var="cloud_id=%env.YC_CLOUD_ID%" \
+  -var="authorized_key=$KEY_FILE" \
+  -var="folder_id=%env.YC_FOLDER_ID%"
+```
+
+![](./DiplomWork/img/tc-terraform-5.png)
+
+Как видно CI/CD terraform настроен и выполнен успешно;
+
+![](./DiplomWork/img/tc-terraform-6.png)
+
+
+### Ожидаемый результат достигнуты*:
+
+1. Git репозиторий с конфигурационными файлами для настройки Kubernetes.
+2. Http доступ на 80 порту к web интерфейсу grafana.
+3. Дашборды в grafana отображающие состояние Kubernetes кластера.
+4. Http доступ на 80 порту к тестовому приложению.
+5. Atlantis или terraform cloud или ci/cd-terraform
+
+Репозиторий с конфигурационными файлами есть. Дашборды в grafana отображающие состояние Kubernetes кластера присутствуют. 
+Http доступ на 80 порту к тестовому приложению присутствует. Организовано ci/cd-terraform через teamcity. Единственный минус, это то что
+мне так и не удалось добиться доступа к grafana по 80 порту. Это также делается через NLB, но проведя все те же действия что и с web-app
+доступ оказался возможным только используя port-forward. В целом результаты достигнуты.
 
 ---
 
@@ -1421,3 +1530,5 @@ kubectl set image deploy/gnn-diploma-app app="$IMAGE" --namespace=default
 3. При создании тега (например, v1.0.0) происходит сборка и отправка с соответствующим label в регистри, а также деплой соответствующего Docker образа в кластер Kubernetes.
 
 ---
+
+### Выводы:

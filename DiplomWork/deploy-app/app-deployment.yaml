@@ -25,34 +25,44 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "200m"
+
+---
+# service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-lb
+  annotations:
+    # Опционально: укажите статический IP (если зарезервирован)
+    yandex.cloud/load-balancer-address: "158.160.214.219"
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 30003  # порт вашего контейнера
+      protocol: TCP
+  selector:
+    app: gnn-diploma-app # должен совпадать с label'ами ваших Pod'ов
+
+
+
+
+
+
 # ---
 # apiVersion: v1
 # kind: Service
 # metadata:
 #   name: gnn-diploma-service
 # spec:
+#   type: NodePort
 #   selector:
 #     app: gnn-diploma-app
 #   ports:
-#     - protocol: TCP
+#     - name: web
+#       nodePort: 30003
 #       port: 80
 #       targetPort: 80
-#   type:  NodePort #ClusterIP  # LoadBalancer# Сделаем NodePort далее
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: gnn-diploma-service
-spec:
-  type: NodePort
-  selector:
-    app: gnn-diploma-app
-  ports:
-    - name: web
-      nodePort: 30003
-      port: 80
-      targetPort: 80
 
 # ---
 # # app-loadbalancer.yaml

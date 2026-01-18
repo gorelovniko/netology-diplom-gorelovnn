@@ -52,3 +52,4 @@ variable "authorized_key" {
 variable "cloud_config" {
   default = ""
 }
+

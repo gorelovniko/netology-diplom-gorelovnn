@@ -70,4 +70,9 @@ cores = {
     teamcity-server = 100
     teamcity-agent  = 20
   }
+
+  
+  app_nodeport   = 30003  # ваш NodePort для приложения
+  grafana_nodeport = 30004  # NodePort для Grafana
+
 }

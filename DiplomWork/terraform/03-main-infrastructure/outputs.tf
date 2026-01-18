@@ -101,3 +101,12 @@ output "vm_instances" {
     }
   }
 }
+
+# output "app_lb_external_ip" {
+#   value = yandex_lb_network_load_balancer.nlb-app.listeners[0].external_address_spec[0].address
+# }
+
+# output "grafana_lb_external_ip" {
+#   value = yandex_lb_network_load_balancer.nlb-grafana.listeners[0].external_address_spec[0].address
+# }
+

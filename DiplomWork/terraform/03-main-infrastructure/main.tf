@@ -34,6 +34,7 @@ resource "yandex_compute_instance" "vm" {
     subnet_id  = local.ipv4_subnets[each.key]
     ip_address = local.ipv4_internals[each.key]
     nat        = local.ipv4_nats[each.key]
+    # security_group_ids = [yandex_vpc_security_group.k8s-nodes-sg.id] 
   }
 
 
@@ -45,3 +46,18 @@ resource "yandex_compute_instance" "vm" {
   }
 }
 
+# Целевая группа для Kubernetes-нод (node1, node2)
+resource "yandex_lb_target_group" "k8s-nodes-tg" {
+  name = "k8s-nodes-target-group"
+
+  # Добавляем node1 и node2 вручную
+  target {
+    subnet_id = local.ipv4_subnets["node1"]
+    address   = local.ipv4_internals["node1"]
+  }
+
+  target {
+    subnet_id = local.ipv4_subnets["node2"]
+    address   = local.ipv4_internals["node2"]
+  }
+}
