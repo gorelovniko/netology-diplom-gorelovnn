@@ -25,24 +25,73 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "200m"
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: gnn-diploma-service
+# spec:
+#   selector:
+#     app: gnn-diploma-app
+#   ports:
+#     - protocol: TCP
+#       port: 80
+#       targetPort: 80
+#   type:  NodePort #ClusterIP  # LoadBalancer# Сделаем NodePort далее
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: gnn-diploma-service
 spec:
+  type: NodePort
   selector:
     app: gnn-diploma-app
   ports:
-    - protocol: TCP
+    - name: web
+      nodePort: 30003
       port: 80
       targetPort: 80
-  type: ClusterIP  # Сделаем NodePort далее
+
+# ---
+# # app-loadbalancer.yaml
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: app-lb
+#   namespace: default
+#   annotations:
+#     # Опционально: укажите внешний IP или настройки Yandex.Cloud
+#     yandex.cloud/load-balancer-type: "external"
+#     # Если вы хотите статический IP (сначала создайте его в YC):
+#     # yandex.cloud/load-balancer-id: "<ваш-статический-ip-id>"
+# spec:
+#   type: LoadBalancer
+#   ports:
+#     - port: 80
+#       targetPort: 80  # порт, на котором слушает ваш под
+#       protocol: TCP
+#   selector:
+#     app: gnn-diploma-app  # должен совпадать с label'ами ваших подов
 
 
 
 
 
+
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: gnn-diploma-service
+# spec:
+#   type: LoadBalancer
+#   selector:
+#     app: gnn-diploma-app  # ✅ всё ещё важно!
+#   ports:
+#     - port: 80
+#       targetPort: 80
 
 
 

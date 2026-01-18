@@ -919,7 +919,6 @@ kubectl apply --server-side -f manifests/setup/
 
 ```bash
 
-# Ждём, пока все CRD станут ready
 kubectl wait \
   --for condition=Established \
   --all CustomResourceDefinition \
