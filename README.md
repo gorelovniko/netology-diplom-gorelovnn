@@ -85,9 +85,9 @@ $ yc iam access-key create --service-account-name terradiploma
 access_key:
   id: aje3jn02jscc23e3d4cc
   service_account_id: aje5cp35s6rqaruu12rc
-  created_at: "2023-01-23T15:04:49.990741955Z"
-  key_id: YCAJEjIKE0LAhPDh76DlFvFgE
-secret: YCMDDN-RmCLfNvEuY5HJ4PXMfa1w64q-cVXfEVFt # значение secret будет доступно первый и последний раз
+  created_at: "2026-01-06T15:04:49.990741955Z"
+  key_id: <Значение `key_id`>
+secret: <Значение `secret`> # значение secret будет доступно первый и последний раз
 
 
 export AWS_ACCESS_KEY_ID=<Значение `key_id`>
