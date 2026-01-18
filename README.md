@@ -87,7 +87,7 @@ access_key:
   service_account_id: aje5cp35s6rqaruu12rc
   created_at: "2026-01-06T15:04:49.990741955Z"
   key_id: <Значение `key_id`>
-Sekerett: <Значение `secret`> # значение secret будет доступно первый и последний раз
+Sekerett: <Значение `Sekerett`> # значение secret будет доступно первый и последний раз
 
 
 export AWS_ACCESS_KEY_ID=<Значение `key_id`>
