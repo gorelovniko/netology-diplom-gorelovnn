@@ -44,3 +44,4 @@ resource "yandex_compute_instance" "vm" {
     user-data          = var.cloud_config
   }
 }
+
