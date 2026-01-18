@@ -44,3 +44,11 @@ variable "ipv4_cidr_private_subnet2" {
 variable "ipv4_cidr_private_subnet3" {
   default = "10.30.0.0/16"
 }
+
+variable "authorized_key" {
+  default = ""
+}
+
+variable "cloud_config" {
+  default = ""
+}

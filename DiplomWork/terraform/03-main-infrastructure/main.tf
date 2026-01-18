@@ -40,6 +40,7 @@ resource "yandex_compute_instance" "vm" {
   scheduling_policy {preemptible = true}
 
   metadata = {
-    user-data          = file("../cloud-init.yml")
+    # user-data          = file("../cloud-init.yml")
+    user-data          = var.cloud_config
   }
 }
