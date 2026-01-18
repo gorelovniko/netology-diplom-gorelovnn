@@ -73,10 +73,36 @@
 
 ```
 
-!!!!!!!!!!!!!!!!!!!!! Дописать что делал в консоле.
-Также необходимо было добавить в переменные среды ключ доступа к бакету. Иначе файл просто не создастся из-за отсутствия прав.
-
 ![](./DiplomWork/img/02-terraform.tfstate.png) 
+
+Также необходимо было добавить в переменные среды ключ доступа к бакету. Иначе файл просто не создастся из-за отсутствия прав.
+Для этого нужно выполнить следующие команды в terminale:
+
+
+```bash
+
+$ yc iam access-key create --service-account-name terradiploma 
+access_key:
+  id: aje3jn02jscc23e3d4cc
+  service_account_id: aje5cp35s6rqaruu12rc
+  created_at: "2023-01-23T15:04:49.990741955Z"
+  key_id: YCAJEjIKE0LAhPDh76DlFvFgE
+secret: YCMDDN-RmCLfNvEuY5HJ4PXMfa1w64q-cVXfEVFt # значение secret будет доступно первый и последний раз
+
+
+export AWS_ACCESS_KEY_ID=<Значение `key_id`>
+export AWS_SECRET_ACCESS_KEY=<Значение `secret`>
+
+```
+
+Либо добавить команды export в ~/.bashrs, после перезагрузиться или выполнить без перезагрузки:
+
+```bash
+
+source ~/.bashrc
+
+```
+
 
 4. Созданы VPC с подсетями в разных зонах доступности:
 
@@ -336,13 +362,6 @@ Destroy complete! Resources: 10 destroyed.
 ## <a name="Создание Kubernetes кластера">Создание Kubernetes кластера</a>
 
 На этом этапе необходимо создать [Kubernetes](https://kubernetes.io/ru/docs/concepts/overview/what-is-kubernetes/) кластер на базе предварительно созданной инфраструктуры.   Требуется обеспечить доступ к ресурсам из Интернета.
-
-Это можно сделать двумя способами:
-
-1. Рекомендуемый вариант: самостоятельная установка Kubernetes кластера.  
-   а. При помощи Terraform подготовить как минимум 3 виртуальных машины Compute Cloud для создания Kubernetes-кластера. Тип виртуальной машины следует выбрать самостоятельно с учётом требовании к производительности и стоимости. Если в дальнейшем поймете, что необходимо сменить тип инстанса, используйте Terraform для внесения изменений.  
-   б. Подготовить [ansible](https://www.ansible.com/) конфигурации, можно воспользоваться, например [Kubespray](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)  
-   в. Задеплоить Kubernetes на подготовленные ранее инстансы, в случае нехватки каких-либо ресурсов вы всегда можете создать их при помощи Terraform.
 
 Создадим кластер Kubernetes, используя [Ansible](https://www.ansible.com/)
 и применяя [Kubespray](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/) развернём
@@ -1265,14 +1284,14 @@ teamcity-server            : ok=2    changed=0    unreachable=0    failed=0    s
 
 ![](./DiplomWork/img/tc-web-app-1.png)  
 
-"Fetch URL" - собственно наш репозиторий для отслеживания;  
-"Username"  - логин github репозитория;  
-"Password/access token" - токен заранее создаётся в интерфейсе github. При создании указываются права доступа и срок действия токена;  
-"Branch specification"  - добавляется для отслеживания изменения в любой из веток проекта github;  
+`Fetch URL` - собственно наш репозиторий для отслеживания;  
+`Username`  - логин github репозитория;  
+`Password/access token` - токен заранее создаётся в интерфейсе github. При создании указываются права доступа и срок действия токена;  
+`Branch specification`  - добавляется для отслеживания изменения в любой из веток проекта github;  
 
 ![](./DiplomWork/img/tc-web-app-2.png)  
 
-На вкладке "Build features" нужно добавить расширение "Docker Registry Connection". Иначе teamcity не будет работать с docker;
+На вкладке `Build features` нужно добавить расширение `Docker Registry Connection`. Иначе teamcity не будет работать с docker;
 
 ![](./DiplomWork/img/tc-web-app-3.png)  
 
@@ -1280,7 +1299,7 @@ teamcity-server            : ok=2    changed=0    unreachable=0    failed=0    s
 
 ![](./DiplomWork/img/tc-web-app-4.png)  
 
-На вкладке "Triggers" добавим условия при которых будет запускаться сборка;
+На вкладке `Triggers` добавим условия при которых будет запускаться сборка;
 
 ![](./DiplomWork/img/tc-web-app-5.png)  
 
@@ -1345,11 +1364,6 @@ echo "##teamcity[setParameter name='env.COMMIT_TAG' value='$tag']"
 
 #!/bin/bash
 set -e
-
-git fetch
-
-# Получаем тег, указывающий на текущий коммит
-tag=$(git tag --points-at HEAD)
 
 # Если тег не найден — используем 'latest'
 if [ "%env.COMMIT_TAG%" == "latest" ]; then
