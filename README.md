@@ -1203,16 +1203,46 @@ teamcity-server            : ok=2    changed=0    unreachable=0    failed=0    s
 Заходим на teamcity-server и начинаем первоначальную настройку:
 
 ![](./DiplomWork/img/tc-begin-1.png)  
+
+Выбрали базу данных по умолчанию. Выбор других для проекта избыточно;
+
 ![](./DiplomWork/img/tc-begin-2.png)  
+
+Соглашаемся с лицензионным соглашением. Галочку про отправку анонимных данных можно убрать;
+
 ![](./DiplomWork/img/tc-begin-3.png)  
+
+Создаем административную учетку;
+
 ![](./DiplomWork/img/tc-begin-4.png)  
+
+Сразу же логинимся;
+
 ![](./DiplomWork/img/tc-begin-5.png)  
+
+И первое что нам нужно сделать - это авторизовать агента, который и будет выполнять сборки CI/CD;
+
 ![](./DiplomWork/img/tc-begin-6.png)  
+
+Дожидаемся изменения статуса на зелёный "Authorized"
+
 ![](./DiplomWork/img/tc-begin-7.png)  
-![](./DiplomWork/img/tc-begin-8.png)  
+
+Теперь можно создавать проекты по сборке и доставке;
+
+
+
+
+
+
+
+
+
+
+<!-- ![](./DiplomWork/img/tc-begin-8.png)  
 ![](./DiplomWork/img/tc-begin-9.png)  
 ![](./DiplomWork/img/tc-begin-10.png)  
-![](./DiplomWork/img/tc-begin-11.png)  
+![](./DiplomWork/img/tc-begin-11.png)   -->
 
 
 
@@ -1225,20 +1255,153 @@ teamcity-server            : ok=2    changed=0    unreachable=0    failed=0    s
 
 Осталось настроить ci/cd систему для автоматической сборки docker image и деплоя приложения при изменении кода.
 
-Цель:
+### Цель:
 
 1. Автоматическая сборка docker образа при коммите в репозиторий с тестовым приложением.
 2. Автоматический деплой нового docker образа.
 
 
+Начнём по порядку. Добавим git репозиторий, изменения которого будут отслеживаться:
+
+![](./DiplomWork/img/tc-web-app-1.png)  
+
+"Fetch URL" - собственно наш репозиторий для отслеживания;  
+"Username"  - логин github репозитория;  
+"Password/access token" - токен заранее создаётся в интерфейсе github. При создании указываются права доступа и срок действия токена;  
+"Branch specification"  - добавляется для отслеживания изменения в любой из веток проекта github;  
+
+![](./DiplomWork/img/tc-web-app-2.png)  
+
+На вкладке "Build features" нужно добавить расширение "Docker Registry Connection". Иначе teamcity не будет работать с docker;
+
+![](./DiplomWork/img/tc-web-app-3.png)  
+
+Добавим переменные, которые будут использоваться в скриптах сборки, а также с целью скрыть чувствительные данные;
+
+![](./DiplomWork/img/tc-web-app-4.png)  
+
+На вкладке "Triggers" добавим условия при которых будет запускаться сборка;
+
+![](./DiplomWork/img/tc-web-app-5.png)  
+
+Теперь займёмся этапами сборки. Так как в корне нашего проекта имеется Dockerfile, то первое что нужно сделать это 
+нажать на кнопку автоматического определения шагов сборки. Teamcity увидит Dockerfile и предложит автоматически создать
+первый этап сборки docker образа, но мы его потом сместим. Воспользуемся этим;
+
+![](./DiplomWork/img/tc-web-app-6.png)  
+
+Следующим этапом залогинимся на нашем внешнем docker репозитории. Используем custom скрипт. В скрипте используем ранее созданные переменные;
+
+```bash
+echo "%env.DOCKER_REGISTRY_PASSWORD%" | docker login -u "%env.DOCKER_REGISTRY_USERNAME%" --password-stdin
+```
+В конце команды нужно указывать свой репозиторий, но мы используем dockerhub. Он подставит автоматически;
+
+![](./DiplomWork/img/tc-web-app-7.png)  
+
+Третьим этапов будем определять наличие тега у коммита. Если его нет, то сборка docker образа будет проходить с тегом по умолчанию "latest". В случае наличия тега сборка будет с тегом из коммита;
+
+```bash
+
+#!/bin/bash
+set -e
+
+# Загружаем все теги (на случай shallow clone)
+git fetch --tags
+
+# Получаем тег, указывающий на текущий коммит
+tag=$(git tag --points-at HEAD | head -n1)
+
+# Если тег не найден — используем 'latest'
+if [ -z "$tag" ]; then
+  tag="latest"
+  echo "No tag found on current commit. Using 'latest'."
+else
+  echo "Current commit tag: '$tag'"
+fi
+
+# Экспортируем параметр в TeamCity
+echo "##teamcity[setParameter name='env.COMMIT_TAG' value='$tag']"
+
+```
+
+![](./DiplomWork/img/tc-web-app-8.png)  
+
+Тот автоматически созданный первый этап нужно переместить на третий этап сборки и немного дополнить. 
+В строке имени создаваемого образа укажем наши параметры "nikogorelov/gnn-diploma-netology:%env.COMMIT_TAG%"
+
+![](./DiplomWork/img/tc-web-app-9.png)  
+
+Теперь пушим ранее собранный образ. Тут в поле image name, указываем тоже самое, что и на предыдущем шаге;
+
+![](./DiplomWork/img/tc-web-app-10.png)  
+
+В заключении делаем deploy образа в k8s кластер с новым тегом. Если тег остутсвует, то и deploy не происходит.
+
+ВАЖНО: Перед deploy in k8s необходимо убедиться, что [приложение](./DiplomWork/deploy-app/app-deployment.yaml) уже развёрнуто и namespace существует!!!
 
 
+```bash
+
+#!/bin/bash
+set -e
+
+git fetch
+
+# Получаем тег, указывающий на текущий коммит
+tag=$(git tag --points-at HEAD)
+
+# Если тег не найден — используем 'latest'
+if [ "%env.COMMIT_TAG%" == "latest" ]; then
+  echo "Not a Git tag — skipping deployment."
+  exit 0
+else
+  echo "Current commit tag: %env.COMMIT_TAG%"
+fi
+
+IMAGE="%env.REGISTRY_IMAGE%:%env.COMMIT_TAG%"
+
+echo "Deploying $IMAGE to Kubernetes"
+
+kubectl set image deploy/gnn-diploma-app app="$IMAGE" --namespace=default
+
+```
+
+![](./DiplomWork/img/tc-web-app-11.png)  
 
 
+По итогу получилось 5 этапов, которые идут друг за другом и если один из этапов завершился ошибкой, то вся сборка прерывается;
 
+![](./DiplomWork/img/tc-web-app-12.png)  
+
+Проверяем корректность настройки всего. Для этого достаточно сделать коммит и запушить в наш [git](https://github.com/gorelovniko/diploma-webapp).
+Для начала сделаем не добавляя тега; 
+
+![](./DiplomWork/img/tc-web-app-13.png)  
+
+В течении минуты сборка должна начаться, что видно на скриншоте;
+
+![](./DiplomWork/img/tc-web-app-14.png)  
+![](./DiplomWork/img/tc-web-app-15.png)  
+![](./DiplomWork/img/tc-web-app-16.png)  
+![](./DiplomWork/img/tc-web-app-17.png)  
+![](./DiplomWork/img/tc-web-app-18.png)  
+
+Как видно из скриншотов выше всё прошло как планировалось. Тег не обнаружен, поэтому docker образ собрался с тегом latest, 
+а приложение не задеплоилось;
+
+Теперь добавим тег;
+
+![](./DiplomWork/img/tc-web-app-19.png)  
+![](./DiplomWork/img/tc-web-app-20.png)  
+![](./DiplomWork/img/tc-web-app-21.png)  
+![](./DiplomWork/img/tc-web-app-22.png)  
+![](./DiplomWork/img/tc-web-app-23.png)  
+![](./DiplomWork/img/tc-web-app-24.png)  
+
+И вот снова отработало так как нам надо. Цели достигнуты;
 
 ### Ожидаемый результат достигнут:
-
 
 1. Интерфейс ci/cd сервиса доступен по http.
 2. При любом коммите в репозиторие с тестовым приложением происходит сборка и отправка в регистр Docker образа.
