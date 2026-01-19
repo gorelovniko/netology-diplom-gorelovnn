@@ -26,13 +26,6 @@
 
 ## <a name="Создание облачной инфраструктуры">Создание облачной инфраструктуры</a>
 
-Для начала необходимо подготовить облачную инфраструктуру в ЯО при помощи [Terraform](https://www.terraform.io/).
-
-Особенности выполнения:
-
-- Бюджет купона ограничен, что следует иметь в виду при проектировании инфраструктуры и использовании ресурсов;
-Для облачного k8s используйте региональный мастер(неотказоустойчивый). Для self-hosted k8s минимизируйте ресурсы ВМ и долю ЦПУ. В обоих вариантах используйте прерываемые ВМ для worker nodes.
-
 Предварительная подготовка к установке и запуску Kubernetes кластера.
 
 1. Создан сервисный аккаунт, который будет в дальнейшем использоваться Terraform для работы с инфраструктурой с необходимыми и достаточными правами:
@@ -45,7 +38,7 @@
 
 [== backend ==](./terraform/02-backend/main.tf)  
 
-3. Создание конфигурации Terraform происходит в созданном ранее бакете. Бекенд используется для хранения стейт файла.
+3. Создание terraform.tfstate происходит в созданном ранее бакете. Бекенд используется для хранения стейт файла.
 
 Для этого в файле provider.tf дописываем необходимые параметры.
 
@@ -583,32 +576,8 @@ changed: [teamcity-server]
 TASK [Install required packages] ******************************************************
 changed: [teamcity-server]
 
-TASK [Set up PostgreSQL 14 repo] ******************************************************
-changed: [teamcity-server]
-
-TASK [Install PostgreSQL] *************************************************************
-changed: [teamcity-server]
-
-TASK [Ensure PostgreSQL is listening] *************************************************
-changed: [teamcity-server]
-
-TASK [Add new configuration to "pg_hba.conf"] *****************************************
-changed: [teamcity-server]
-
 TASK [Change peer identification to trust] ********************************************
 changed: [teamcity-server]
-
-TASK [Create a Superuser PostgreSQL database user] ************************************
-[WARNING]: Module remote_tmp /var/lib/postgresql/.ansible/tmp did not exist and was
-created with a mode of 0700, this may cause issues when running as another user. To
-avoid this, create the remote_tmp dir with the correct permissions manually
-changed: [teamcity-server]
-
-RUNNING HANDLER [Restart_Postgresql] **************************************************
-changed: [teamcity-server]
-
-RUNNING HANDLER [Enable_Postgresql] ***************************************************
-ok: [teamcity-server]
 
 PLAY RECAP ****************************************************************************
 cp1                        : ok=28   changed=21   unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
@@ -1143,7 +1112,10 @@ resource "yandex_lb_network_load_balancer" "nlb-app" {
 
 Нам нужен custom image teamcity-agent с kubectl and terraform. Создадим его и поместим в свой docker repo:
 
-Перейдём в папку custom-tc и выполним:
+Так как github большие файлы не приветствует, то перед сборкой в папку custom-tc необходимо добавить файл terraform. Потому что в репозитории его нет.
+Я добавил уже свой имеющийся в системе. 
+
+Итак перейдём в папку custom-tc и выполним:
 
 ```bash
 
@@ -1530,5 +1502,3 @@ kubectl set image deploy/gnn-diploma-app app="$IMAGE" --namespace=default
 3. При создании тега (например, v1.0.0) происходит сборка и отправка с соответствующим label в регистри, а также деплой соответствующего Docker образа в кластер Kubernetes.
 
 ---
-
-### Выводы:
